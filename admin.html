@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Kixikila Admin</title>
+  <style>
+    :root {
+      --red:    #C8102E;
+      --gold:   #F4A800;
+      --dark:   #1A1008;
+      --bg:     #f5f5f5;
+      --white:  #fff;
+      --border: #e0e0e0;
+      --text:   #333;
+      --muted:  #777;
+      --success:#2e7d32;
+      --warning:#f57c00;
+      --info:   #1565c0;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: system-ui, sans-serif; background: var(--bg); color: var(--text); }
+
+    /* SIDEBAR */
+    .layout { display: flex; min-height: 100vh; }
+    .sidebar {
+      width: 220px; background: var(--dark); color: #fff;
+      display: flex; flex-direction: column; padding: 1.5rem 0; flex-shrink: 0;
+    }
+    .sidebar__logo { padding: 0 1.2rem 1.5rem; font-size: 1.1rem; font-weight: 700; color: var(--gold); }
+    .sidebar__logo span { display: block; font-size: .75rem; color: #aaa; font-weight: 400; }
+    .sidebar__nav { display: flex; flex-direction: column; gap: .2rem; }
+    .nav-item {
+      padding: .7rem 1.2rem; cursor: pointer; transition: background .2s;
+      display: flex; align-items: center; gap: .6rem; font-size: .9rem;
+    }
+    .nav-item:hover { background: rgba(255,255,255,.08); }
+    .nav-item.active { background: var(--red); color: #fff; font-weight: 600; }
+    .sidebar__logout {
+      margin-top: auto; padding: .7rem 1.2rem; cursor: pointer;
+      color: #aaa; font-size: .85rem; display: flex; align-items: center; gap: .6rem;
+    }
+    .sidebar__logout:hover { color: #fff; }
+
+    /* MAIN */
+    .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+    .topbar {
+      background: var(--white); border-bottom: 1px solid var(--border);
+      padding: .9rem 1.5rem; display: flex; align-items: center;
+      justify-content: space-between;
+    }
+    .topbar h1 { font-size: 1.1rem; font-weight: 600; }
+    .topbar__user { font-size: .85rem; color: var(--muted); }
+    .content { flex: 1; padding: 1.5rem; overflow-y: auto; }
+
+    /* CARDS */
+    .stats-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px,1fr)); gap: 1rem; margin-bottom: 1.5rem; }
+    .stat-card {
+      background: var(--white); border-radius: 10px; padding: 1.2rem;
+      border-left: 4px solid var(--gold); box-shadow: 0 1px 4px rgba(0,0,0,.06);
+    }
+    .stat-card__label { font-size: .78rem; color: var(--muted); margin-bottom: .3rem; }
+    .stat-card__value { font-size: 1.6rem; font-weight: 700; }
+
+    /* TABLES */
+    .card {
+      background: var(--white); border-radius: 10px;
+      box-shadow: 0 1px 4px rgba(0,0,0,.06); overflow: hidden; margin-bottom: 1.5rem;
+    }
+    .card__head {
+      padding: 1rem 1.2rem; border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: .5rem;
+    }
+    .card__head h2 { font-size: 1rem; font-weight: 600; }
+    table { width: 100%; border-collapse: collapse; font-size: .85rem; }
+    th { background: var(--bg); text-align: left; padding: .7rem 1rem; font-weight: 600; font-size: .78rem; color: var(--muted); text-transform: uppercase; }
+    td { padding: .7rem 1rem; border-top: 1px solid var(--border); vertical-align: middle; }
+    tr:hover td { background: #fafafa; }
+
+    /* BADGES */
+    .badge {
+      padding: .2rem .6rem; border-radius: 20px; font-size: .72rem;
+      font-weight: 600; display: inline-block;
+    }
+    .badge--promo   { background: #fff3e0; color: var(--warning); }
+    .badge--new     { background: #e8f5e9; color: var(--success); }
+    .badge--pending { background: #fff3e0; color: var(--warning); }
+    .badge--confirmed { background: #e3f2fd; color: var(--info); }
+    .badge--shipped { background: #f3e5f5; color: #6a1b9a; }
+    .badge--delivered { background: #e8f5e9; color: var(--success); }
+    .badge--cancelled { background: #ffebee; color: var(--red); }
+
+    /* BUTTONS */
+    .btn {
+      padding: .45rem .9rem; border-radius: 6px; border: none;
+      cursor: pointer; font-size: .82rem; font-weight: 600; transition: opacity .2s;
+    }
+    .btn:hover { opacity: .85; }
+    .btn--primary { background: var(--red); color: #fff; }
+    .btn--gold    { background: var(--gold); color: #fff; }
+    .btn--sm      { padding: .3rem .65rem; font-size: .78rem; }
+    .btn--outline { background: none; border: 1px solid var(--border); color: var(--text); }
+
+    /* FORM */
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: .8rem; padding: 1.2rem; }
+    .form-group { display: flex; flex-direction: column; gap: .3rem; }
+    .form-group.full { grid-column: 1 / -1; }
+    label { font-size: .78rem; font-weight: 600; color: var(--muted); }
+    input, select, textarea {
+      border: 1px solid var(--border); border-radius: 6px;
+      padding: .5rem .7rem; font-size: .85rem; width: 100%;
+    }
+    textarea { resize: vertical; min-height: 80px; }
+    input:focus, select:focus, textarea:focus { outline: 2px solid var(--gold); border-color: transparent; }
+
+    /* SELECT STATUS */
+    .status-select {
+      border: 1px solid var(--border); border-radius: 5px;
+      padding: .25rem .5rem; font-size: .78rem; cursor: pointer;
+    }
+
+    /* MODAL */
+    .modal-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,.5);
+      display: none; align-items: center; justify-content: center; z-index: 999;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal-box {
+      background: var(--white); border-radius: 12px; width: min(600px, 95vw);
+      max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,.2);
+    }
+    .modal-head {
+      padding: 1rem 1.2rem; border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .modal-head h3 { font-size: 1rem; font-weight: 600; }
+    .modal-foot { padding: 1rem 1.2rem; border-top: 1px solid var(--border); display: flex; gap: .5rem; justify-content: flex-end; }
+    .close-btn { background: none; border: none; font-size: 1.3rem; cursor: pointer; color: var(--muted); }
+
+    /* TOAST */
+    .toast {
+      position: fixed; bottom: 1.5rem; right: 1.5rem;
+      background: var(--dark); color: #fff; padding: .75rem 1.2rem;
+      border-radius: 8px; font-size: .85rem; z-index: 9999;
+      transform: translateY(100px); opacity: 0; transition: all .3s;
+      max-width: 320px;
+    }
+    .toast.show { transform: translateY(0); opacity: 1; }
+
+    .search-bar { padding: .4rem .7rem; border: 1px solid var(--border); border-radius: 6px; font-size: .85rem; }
+    .flex { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; }
+    .text-muted { color: var(--muted); }
+    .icon { font-size: 1.1rem; }
+  </style>
+</head>
+<body>
+
+<div class="layout">
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sidebar__logo">
+      🛍️ Kixikila Admin
+      <span>Painel de Gestão</span>
+    </div>
+    <nav class="sidebar__nav" id="sideNav">
+      <div class="nav-item active" onclick="showTab('dashboard')" data-tab="dashboard">📊 Dashboard</div>
+      <div class="nav-item" onclick="showTab('products')"  data-tab="products">📦 Produtos</div>
+      <div class="nav-item" onclick="showTab('categories')" data-tab="categories">📁 Categorias</div>
+      <div class="nav-item" onclick="showTab('orders')"    data-tab="orders">🛒 Encomendas</div>
+      <div class="nav-item" onclick="showTab('users')"     data-tab="users">👤 Utilizadores</div>
+    </nav>
+    <div class="sidebar__logout" onclick="doLogout()">🚪 Sair</div>
+  </aside>
+
+  <!-- MAIN -->
+  <div class="main">
+    <div class="topbar">
+      <h1 id="pageTitle">Dashboard</h1>
+      <div class="topbar__user" id="topbarUser">Administrador</div>
+    </div>
+    <div class="content" id="content">
+      <p class="text-muted">A carregar…</p>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL PRODUTO -->
+<div class="modal-overlay" id="productModal">
+  <div class="modal-box">
+    <div class="modal-head">
+      <h3 id="modalTitle">Novo Produto</h3>
+      <button class="close-btn" onclick="closeModal()">✕</button>
+    </div>
+    <div class="form-grid" id="productForm">
+      <div class="form-group"><label>Nome *</label><input id="f_name" placeholder="Nome do produto"/></div>
+      <div class="form-group"><label>Ícone (emoji)</label><input id="f_icon" placeholder="☕"/></div>
+      <div class="form-group"><label>Categoria *</label>
+        <select id="f_category">
+          <option value="alimentacao">🥘 Alimentação</option>
+          <option value="bebidas">🍺 Bebidas</option>
+          <option value="artesanato">🪘 Artesanato</option>
+          <option value="agricultura">🌿 Agricultura</option>
+          <option value="cosmetica">💆 Cosmética</option>
+          <option value="textil">👗 Têxtil</option>
+          <option value="tecnologia">📱 Tecnologia</option>
+        </select>
+      </div>
+      <div class="form-group"><label>Badge</label>
+        <select id="f_badge">
+          <option value="">Nenhum</option>
+          <option value="promo">Promoção</option>
+          <option value="new">Novo</option>
+        </select>
+      </div>
+      <div class="form-group"><label>Preço (Kz) *</label><input id="f_price" type="number" min="1"/></div>
+      <div class="form-group"><label>Preço antigo (Kz)</label><input id="f_old_price" type="number" min="0"/></div>
+      <div class="form-group"><label>Origem</label><input id="f_origin" placeholder="Ex: Huambo"/></div>
+      <div class="form-group"><label>Stock</label><input id="f_stock" type="number" min="0" value="0"/></div>
+      <div class="form-group full"><label>Descrição *</label><textarea id="f_desc"></textarea></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn--outline" onclick="closeModal()">Cancelar</button>
+      <button class="btn btn--primary" onclick="saveProduct()">💾 Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL CATEGORIA -->
+<div class="modal-overlay" id="categoryModal">
+  <div class="modal-box">
+    <div class="modal-head">
+      <h3 id="catModalTitle">Nova Categoria</h3>
+      <button class="close-btn" onclick="closeCatModal()">✕</button>
+    </div>
+    <div class="form-grid">
+      <div class="form-group full"><label>Nome *</label><input id="cat_name" placeholder="Ex: Bebidas"/></div>
+      <div class="form-group full"><label>Ícone (emoji)</label><input id="cat_icon" placeholder="🍺"/></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn--outline" onclick="closeCatModal()">Cancelar</button>
+      <button class="btn btn--primary" onclick="saveCategory()">💾 Guardar</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ══════════════════════════════════════════════
+   CONFIG — ajusta o URL base da tua API aqui
+══════════════════════════════════════════════ */
+const API = 'api';
+
+let editingProductId = null;
+let currentTab = 'dashboard';
+
+/* ── Toast ── */
+let toastTimer;
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 3500);
+}
+
+/* ── Tabs ── */
+function showTab(tab) {
+  currentTab = tab;
+  document.querySelectorAll('.nav-item').forEach(el => el.classList.toggle('active', el.dataset.tab === tab));
+  const titles = { dashboard: 'Dashboard', products: 'Produtos', orders: 'Encomendas', users: 'Utilizadores' };
+  document.getElementById('pageTitle').textContent = titles[tab] || tab;
+  const fn = { dashboard: loadDashboard, products: loadProducts, categories: loadCategories, orders: loadOrders, users: loadUsers };
+  fn[tab]?.();
+}
+
+/* ── API helper ── */
+async function api(path, method = 'GET', body = null) {
+  const opts = { method, credentials: 'include', headers: { 'Content-Type': 'application/json' } };
+  if (body) opts.body = JSON.stringify(body);
+  const res  = await fetch(API + path, opts);
+  return res.json();
+}
+
+function fmtKz(v) { return Number(v).toLocaleString('pt-AO') + ' Kz'; }
+
+/* ── DASHBOARD ── */
+async function loadDashboard() {
+  document.getElementById('content').innerHTML = '<p class="text-muted">A carregar estatísticas…</p>';
+  const r = await api('/admin.php?action=stats');
+  if (!r.success) { showToast('❌ ' + r.error); return; }
+  const d = r.data;
+
+  document.getElementById('content').innerHTML = `
+    <div class="stats-grid">
+      <div class="stat-card"><div class="stat-card__label">Produtos Activos</div><div class="stat-card__value">📦 ${d.total_products}</div></div>
+      <div class="stat-card"><div class="stat-card__label">Total Encomendas</div><div class="stat-card__value">🛒 ${d.total_orders}</div></div>
+      <div class="stat-card"><div class="stat-card__label">Pendentes</div><div class="stat-card__value">⏳ ${d.pending_orders}</div></div>
+      <div class="stat-card"><div class="stat-card__label">Clientes</div><div class="stat-card__value">👤 ${d.total_clients}</div></div>
+      <div class="stat-card"><div class="stat-card__label">Receita Total</div><div class="stat-card__value" style="font-size:1.1rem">${fmtKz(d.total_revenue)}</div></div>
+    </div>
+
+    <div class="card">
+      <div class="card__head"><h2>🔥 Top 5 Produtos Mais Vendidos</h2></div>
+      <table>
+        <thead><tr><th>Produto</th><th>Unidades Vendidas</th></tr></thead>
+        <tbody>${(d.top_products || []).map(p => `
+          <tr><td>${p.icon} ${p.name}</td><td><strong>${p.sold}</strong></td></tr>
+        `).join('') || '<tr><td colspan="2" class="text-muted" style="padding:1rem">Sem dados ainda.</td></tr>'}</tbody>
+      </table>
+    </div>
+
+    <div class="card">
+      <div class="card__head"><h2>🕐 Últimas Encomendas</h2></div>
+      <table>
+        <thead><tr><th>#</th><th>Cliente</th><th>Total</th><th>Status</th><th>Data</th></tr></thead>
+        <tbody>${(d.recent_orders || []).map(o => `
+          <tr>
+            <td>#${o.id}</td>
+            <td>${o.client_name || '-'}</td>
+            <td>${fmtKz(o.total)}</td>
+            <td><span class="badge badge--${o.status}">${o.status}</span></td>
+            <td>${new Date(o.created_at).toLocaleDateString('pt-AO')}</td>
+          </tr>
+        `).join('') || '<tr><td colspan="5" class="text-muted" style="padding:1rem">Sem encomendas.</td></tr>'}</tbody>
+      </table>
+    </div>
+  `;
+}
+
+/* ── PRODUTOS ── */
+let allProducts = [];
+async function loadProducts() {
+  document.getElementById('content').innerHTML = '<p class="text-muted">A carregar produtos…</p>';
+  const r = await api('/admin.php?action=products');
+  if (!r.success) { showToast('❌ ' + r.error); return; }
+  allProducts = r.data;
+  renderProductsTable(allProducts);
+}
+
+function renderProductsTable(list) {
+  document.getElementById('content').innerHTML = `
+    <div class="card">
+      <div class="card__head">
+        <h2>📦 Produtos (${list.length})</h2>
+        <div class="flex">
+          <input class="search-bar" placeholder="Pesquisar…" oninput="filterProducts(this.value)"/>
+          <button class="btn btn--primary" onclick="openNewProduct()">＋ Novo Produto</button>
+        </div>
+      </div>
+      <table>
+        <thead><tr><th>ID</th><th>Produto</th><th>Categoria</th><th>Preço</th><th>Stock</th><th>Badge</th><th>Estado</th><th>Acções</th></tr></thead>
+        <tbody>${list.map(p => `
+          <tr>
+            <td class="text-muted">#${p.id}</td>
+            <td>${p.icon} <strong>${p.name}</strong><br><small class="text-muted">${p.origin}</small></td>
+            <td>${p.category_name}</td>
+            <td>${fmtKz(p.price)}${p.old_price ? `<br><small class="text-muted" style="text-decoration:line-through">${fmtKz(p.old_price)}</small>` : ''}</td>
+            <td>${p.stock <= 5 ? `<span style="color:red">${p.stock}!</span>` : p.stock}</td>
+            <td>${p.badge ? `<span class="badge badge--${p.badge}">${p.badge}</span>` : '-'}</td>
+            <td>${p.active ? '✅ Activo' : '❌ Inactivo'}</td>
+            <td class="flex">
+              <button class="btn btn--outline btn--sm" onclick="openEditProduct(${p.id})">✏️</button>
+              <button class="btn btn--sm" style="background:#ffebee;color:#c62828" onclick="deleteProduct(${p.id},'${p.name.replace(/'/g,'')}')">🗑️</button>
+            </td>
+          </tr>
+        `).join('')}</tbody>
+      </table>
+    </div>
+  `;
+}
+
+function filterProducts(q) {
+  const filtered = allProducts.filter(p =>
+    p.name.toLowerCase().includes(q.toLowerCase()) ||
+    p.origin.toLowerCase().includes(q.toLowerCase())
+  );
+  renderProductsTable(filtered);
+}
+
+function openNewProduct() {
+  editingProductId = null;
+  document.getElementById('modalTitle').textContent = 'Novo Produto';
+  ['name','icon','price','old_price','origin','desc'].forEach(f => document.getElementById('f_'+f).value = '');
+  document.getElementById('f_stock').value = 0;
+  document.getElementById('f_badge').value = '';
+  document.getElementById('productModal').classList.add('open');
+}
+
+function openEditProduct(id) {
+  const p = allProducts.find(x => x.id === id);
+  if (!p) return;
+  editingProductId = id;
+  document.getElementById('modalTitle').textContent = 'Editar Produto';
+  document.getElementById('f_name').value       = p.name;
+  document.getElementById('f_icon').value       = p.icon;
+  document.getElementById('f_category').value   = p.category_id;
+  document.getElementById('f_badge').value      = p.badge || '';
+  document.getElementById('f_price').value      = p.price;
+  document.getElementById('f_old_price').value  = p.old_price || '';
+  document.getElementById('f_origin').value     = p.origin;
+  document.getElementById('f_stock').value      = p.stock;
+  document.getElementById('f_desc').value       = p.description;
+  document.getElementById('productModal').classList.add('open');
+}
+
+function closeModal() { document.getElementById('productModal').classList.remove('open'); }
+
+async function saveProduct() {
+  const body = {
+    name:        document.getElementById('f_name').value.trim(),
+    icon:        document.getElementById('f_icon').value.trim() || '📦',
+    category_id: document.getElementById('f_category').value,
+    badge:       document.getElementById('f_badge').value,
+    price:       parseInt(document.getElementById('f_price').value) || 0,
+    old_price:   document.getElementById('f_old_price').value || '',
+    origin:      document.getElementById('f_origin').value.trim(),
+    stock:       parseInt(document.getElementById('f_stock').value) || 0,
+    description: document.getElementById('f_desc').value.trim(),
+  };
+  if (!body.name || !body.price || !body.description) { showToast('⚠️ Preenche os campos obrigatórios (*)'); return; }
+
+  let r;
+  if (editingProductId) {
+    r = await api(`/admin.php?action=products&id=${editingProductId}`, 'PUT', body);
+  } else {
+    r = await api('/admin.php?action=products', 'POST', body);
+  }
+  showToast(r.success ? '✅ ' + r.message : '❌ ' + r.error);
+  if (r.success) { closeModal(); loadProducts(); }
+}
+
+async function deleteProduct(id, name) {
+  if (!confirm(`Desactivar produto "${name}"?`)) return;
+  const r = await api(`/admin.php?action=products&id=${id}`, 'DELETE');
+  showToast(r.success ? '✅ ' + r.message : '❌ ' + r.error);
+  if (r.success) loadProducts();
+}
+
+/* ── CATEGORIAS ── */
+let allCategories = [];
+async function loadCategories() {
+  document.getElementById('content').innerHTML = '<p class="text-muted">A carregar categorias…</p>';
+  const r = await api('/admin.php?action=categories');
+  if (!r.success) { showToast('❌ ' + r.error); return; }
+  allCategories = r.data;
+  renderCategoriesTable(allCategories);
+}
+
+function renderCategoriesTable(list) {
+  document.getElementById('content').innerHTML = `
+    <div class="card">
+      <div class="card__head">
+        <h2>📁 Categorias (${list.length})</h2>
+        <button class="btn btn--primary" onclick="openNewCategory()">＋ Nova Categoria</button>
+      </div>
+      <table>
+        <thead><tr><th>ID</th><th>Categoria</th><th>Ícone</th><th>Estado</th><th>Acções</th></tr></thead>
+        <tbody>${list.map(c => `
+          <tr>
+            <td class="text-muted">${c.id}</td>
+            <td><strong>${c.name}</strong></td>
+            <td style="font-size:1.5rem">${c.icon}</td>
+            <td>
+              <span class="badge ${c.active ? 'badge--new' : 'badge--cancelled'}">
+                ${c.active ? 'Aberta' : 'Fechada'}
+              </span>
+            </td>
+            <td class="flex">
+              <button class="btn btn--outline btn--sm" onclick="toggleCategoryStatus('${c.id}', ${c.active ? 0 : 1})">
+                ${c.active ? '🔒 Fechar' : '🔓 Abrir'}
+              </button>
+              <button class="btn btn--sm" style="background:#ffebee;color:#c62828" onclick="deleteCategory('${c.id}', '${c.name}')">🗑️ Eliminar</button>
+            </td>
+          </tr>
+        `).join('')}</tbody>
+      </table>
+    </div>
+  `;
+}
+
+function openNewCategory() {
+  document.getElementById('catModalTitle').textContent = 'Nova Categoria';
+  document.getElementById('cat_name').value = '';
+  document.getElementById('cat_icon').value = '';
+  document.getElementById('categoryModal').classList.add('open');
+}
+
+function closeCatModal() { document.getElementById('categoryModal').classList.remove('open'); }
+
+async function saveCategory() {
+  const name = document.getElementById('cat_name').value.trim();
+  const icon = document.getElementById('cat_icon').value.trim();
+  if (!name) { showToast('⚠️ O nome é obrigatório'); return; }
+  
+  const r = await api('/admin.php?action=categories', 'POST', { name, icon });
+  showToast(r.success ? '✅ ' + r.message : '❌ ' + r.error);
+  if (r.success) { closeCatModal(); loadCategories(); }
+}
+
+async function toggleCategoryStatus(id, active) {
+  const r = await api(`/admin.php?action=categories&id=${id}`, 'PUT', { active });
+  showToast(r.success ? '✅ ' + r.message : '❌ ' + r.error);
+  if (r.success) loadCategories();
+}
+
+async function deleteCategory(id, name) {
+  if (!confirm(`Desejas eliminar definitivamente a categoria "${name}"?`)) return;
+  const r = await api(`/admin.php?action=categories&id=${id}`, 'DELETE');
+  showToast(r.success ? '✅ ' + r.message : '❌ ' + r.error);
+  if (r.success) loadCategories();
+}
+
+/* ── ENCOMENDAS ── */
+async function loadOrders() {
+  document.getElementById('content').innerHTML = '<p class="text-muted">A carregar encomendas…</p>';
+  const r = await api('/admin.php?action=orders');
+  if (!r.success) { showToast('❌ ' + r.error); return; }
+  const orders = r.data;
+
+  document.getElementById('content').innerHTML = `
+    <div class="card">
+      <div class="card__head"><h2>🛒 Encomendas (${orders.length})</h2></div>
+      <table>
+        <thead><tr><th>#</th><th>Cliente</th><th>Contacto</th><th>Items</th><th>Total</th><th>Promo</th><th>Status</th><th>Data</th></tr></thead>
+        <tbody>${orders.map(o => `
+          <tr>
+            <td>#${o.id}</td>
+            <td><strong>${o.client_name || '-'}</strong></td>
+            <td><small>${o.client_email || ''}<br>${o.client_phone || ''}</small></td>
+            <td>${o.item_count}</td>
+            <td>${fmtKz(o.total)}${o.discount_pct > 0 ? `<br><small class="text-muted">−${o.discount_pct}%</small>` : ''}</td>
+            <td>${o.promo_code ? `<span class="badge badge--promo">${o.promo_code}</span>` : '-'}</td>
+            <td>
+              <select class="status-select" onchange="updateOrderStatus(${o.id}, this.value)">
+                ${['pending','confirmed','shipped','delivered','cancelled'].map(s =>
+                  `<option value="${s}" ${o.status===s?'selected':''}>${s}</option>`
+                ).join('')}
+              </select>
+            </td>
+            <td>${new Date(o.created_at).toLocaleDateString('pt-AO')}</td>
+          </tr>
+        `).join('')}</tbody>
+      </table>
+    </div>
+  `;
+}
+
+async function updateOrderStatus(id, status) {
+  const r = await api(`/admin.php?action=orders&id=${id}`, 'PUT', { status });
+  showToast(r.success ? '✅ ' + r.message : '❌ ' + r.error);
+}
+
+/* ── UTILIZADORES ── */
+async function loadUsers() {
+  document.getElementById('content').innerHTML = '<p class="text-muted">A carregar utilizadores…</p>';
+  const r = await api('/admin.php?action=users');
+  if (!r.success) { showToast('❌ ' + r.error); return; }
+  const users = r.data;
+
+  document.getElementById('content').innerHTML = `
+    <div class="card">
+      <div class="card__head"><h2>👤 Utilizadores (${users.length})</h2></div>
+      <table>
+        <thead><tr><th>ID</th><th>Nome</th><th>Email</th><th>Telefone</th><th>Papel</th><th>Estado</th><th>Registado</th></tr></thead>
+        <tbody>${users.map(u => `
+          <tr>
+            <td class="text-muted">#${u.id}</td>
+            <td><strong>${u.name}</strong></td>
+            <td>${u.email}</td>
+            <td>${u.phone || '-'}</td>
+            <td><span class="badge ${u.role==='admin' ? 'badge--promo' : 'badge--new'}">${u.role}</span></td>
+            <td>${u.active ? '✅' : '❌'}</td>
+            <td>${new Date(u.created_at).toLocaleDateString('pt-AO')}</td>
+          </tr>
+        `).join('')}</tbody>
+      </table>
+    </div>
+  `;
+}
+
+/* ── LOGOUT ── */
+async function doLogout() {
+  await api('/auth.php?action=logout', 'POST');
+  showToast('👋 Sessão terminada.');
+  setTimeout(() => location.reload(), 1000);
+}
+
+/* ── INIT ── */
+async function checkLogin() {
+  const r = await api('/auth.php?action=me');
+  if (r.success && r.data.role === 'admin') {
+    document.getElementById('topbarUser').textContent = '👋 ' + r.data.name;
+    loadDashboard();
+  } else {
+    document.getElementById('content').innerHTML = `
+      <div style="max-width:360px;margin:4rem auto;background:#fff;padding:2rem;border-radius:12px;box-shadow:0 4px 20px rgba(0,0,0,.1)">
+        <h2 style="margin-bottom:1.2rem;text-align:center">🔐 Login Admin</h2>
+        <div style="display:flex;flex-direction:column;gap:.8rem">
+          <input id="loginEmail" type="email" placeholder="Email" style="padding:.6rem;border:1px solid #ddd;border-radius:6px"/>
+          <input id="loginPass"  type="password" placeholder="Senha" style="padding:.6rem;border:1px solid #ddd;border-radius:6px"/>
+          <button class="btn btn--primary" style="padding:.7rem" onclick="doLogin()">Entrar</button>
+        </div>
+        <p style="text-align:center;margin-top:1rem;font-size:.8rem;color:#999">
+          Default: admin@kixikila.ao / Admin@1234
+        </p>
+      </div>
+    `;
+  }
+}
+
+async function doLogin() {
+  const email = document.getElementById('loginEmail').value;
+  const pass  = document.getElementById('loginPass').value;
+  const r = await api('/auth.php?action=login', 'POST', { email, password: pass });
+  if (r.success && r.data.role === 'admin') {
+    showToast('✅ Login realizado!');
+    setTimeout(() => location.reload(), 800);
+  } else {
+    showToast('❌ ' + (r.error || 'Acesso negado.'));
+  }
+}
+
+checkLogin();
+</script>
+</body>
+</html>

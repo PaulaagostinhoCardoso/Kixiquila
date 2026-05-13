@@ -1,5 +1,4 @@
 /* ═══════════════════════════════════════════════════════════
-<<<<<<< HEAD
    KIXIKILA MARKET — app.js (LUXURY VERSION)
 ═══════════════════════════════════════════════════════════ */
 
@@ -9,26 +8,27 @@ let activeCategory = 'all';
 let searchTerm = '';
 let toastTimer = null;
 
+/**
+ * Utilitários
+ */
 function formatKz(value) {
     return new Intl.NumberFormat('pt-AO').format(value) + ' Kz';
 }
 
 /**
- * Toast Notifications - Melhorado para esconder corretamente
+ * Toast Notifications
  */
 function showToast(message, icon = 'check-circle') {
     const toast = document.getElementById('toast');
     if (!toast) return;
 
-    // Resetar se já estiver ativo
     toast.classList.remove('active');
     clearTimeout(toastTimer);
 
-    // Pequeno delay para reiniciar a animação se necessário
     setTimeout(() => {
         toast.innerHTML = `<i data-lucide="${icon}"></i> <span>${message}</span>`;
         toast.classList.add('active');
-        lucide.createIcons();
+        if (window.lucide) lucide.createIcons();
 
         toastTimer = setTimeout(() => {
             toast.classList.remove('active');
@@ -36,6 +36,9 @@ function showToast(message, icon = 'check-circle') {
     }, 50);
 }
 
+/**
+ * Scroll Suave
+ */
 function scrollToSection(id) {
     const el = document.getElementById(id);
     if (el) {
@@ -46,20 +49,39 @@ function scrollToSection(id) {
     }
 }
 
+/**
+ * Filtros por Categoria
+ */
 function filterByCategory(id, el) {
     activeCategory = id;
-    
+
+    // UI feedback
     document.querySelectorAll('.cat-card, .filter-btn').forEach(card => {
         card.classList.remove('active');
     });
     if (el) el.classList.add('active');
 
+    applyFilters();
+}
+
+/**
+ * Aplica Filtros (Categoria + Pesquisa)
+ */
+function applyFilters() {
     const grid = document.getElementById('productsGrid');
+    if (!grid) return;
+
     const cards = grid.querySelectorAll('.product-card');
+    const q = searchTerm.toLowerCase();
 
     cards.forEach(card => {
         const cat = card.getAttribute('data-category');
-        if (activeCategory === 'all' || cat === activeCategory) {
+        const name = card.querySelector('.product-name')?.textContent.toLowerCase() || '';
+
+        const matchesCat = (activeCategory === 'all' || cat === activeCategory);
+        const matchesSearch = (searchTerm === '' || name.includes(q));
+
+        if (matchesCat && matchesSearch) {
             card.style.display = 'block';
         } else {
             card.style.display = 'none';
@@ -67,6 +89,9 @@ function filterByCategory(id, el) {
     });
 }
 
+/**
+ * Carrinho - Lógica
+ */
 function addToCart(id) {
     if (typeof PRODUCTS === 'undefined') return;
     const product = PRODUCTS.find(p => p.id === id);
@@ -91,8 +116,15 @@ function updateCartUI() {
     const body = document.getElementById('cartBody');
     const foot = document.getElementById('cartFoot');
 
+    if (!body) return;
+
     if (cart.length === 0) {
-        body.innerHTML = '<p style="text-align:center; color:rgba(255,255,255,0.2); padding-top:4rem; font-size:0.9rem;">A tua mala está vazia.</p>';
+        body.innerHTML = `
+            <div class="cart-empty" style="text-align:center; color:rgba(255,255,255,0.2); padding:4rem 2rem;">
+                <i data-lucide="shopping-cart" style="width:48px; height:48px; margin-bottom:1rem; opacity:0.1;"></i>
+                <p style="font-size:0.9rem;">A tua mala está vazia.</p>
+            </div>
+        `;
         if (foot) foot.style.display = 'none';
     } else {
         body.innerHTML = cart.map(item => `
@@ -101,17 +133,34 @@ function updateCartUI() {
                 <div class="cart-item__info">
                     <h4 class="cart-item__name">${item.name}</h4>
                     <p class="cart-item__price">${formatKz(item.price)} x ${item.qty}</p>
+                    <div class="cart-item__qty-controls" style="display:flex; gap:10px; margin-top:5px;">
+                        <button onclick="changeQty(${item.id}, -1)" class="qty-btn"><i data-lucide="minus" size="12"></i></button>
+                        <span>${item.qty}</span>
+                        <button onclick="changeQty(${item.id}, 1)" class="qty-btn"><i data-lucide="plus" size="12"></i></button>
+                    </div>
                 </div>
                 <button class="cart-item__remove" onclick="removeFromCart(${item.id})"><i data-lucide="trash-2" size="18"></i></button>
             </div>
         `).join('');
-        
+
         const total = cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
         const totalEl = document.getElementById('cartTotal');
         if (totalEl) totalEl.textContent = formatKz(total);
         if (foot) foot.style.display = 'block';
     }
-    lucide.createIcons();
+    if (window.lucide) lucide.createIcons();
+}
+
+function changeQty(id, delta) {
+    const item = cart.find(item => item.id === id);
+    if (!item) return;
+
+    item.qty += delta;
+    if (item.qty <= 0) {
+        removeFromCart(id);
+    } else {
+        updateCartUI();
+    }
 }
 
 function removeFromCart(id) {
@@ -119,10 +168,75 @@ function removeFromCart(id) {
     updateCartUI();
 }
 
-function openModal(id) {
-    showToast("Detalhes em breve...", "info");
+function clearCart() {
+    if (confirm('Esvaziar toda a mala?')) {
+        cart = [];
+        updateCartUI();
+        showToast('Mala vazia.', 'trash-2');
+    }
 }
 
+function checkout() {
+    if (cart.length === 0) {
+        showToast('A tua mala está vazia!', 'shopping-cart');
+        return;
+    }
+    showToast('Finalização de compra em breve...', 'info');
+}
+
+/**
+ * Modal - Detalhes
+ */
+function openModal(id) {
+    if (typeof PRODUCTS === 'undefined') return;
+    const p = PRODUCTS.find(x => x.id === id);
+    if (!p) return;
+
+    const modal = document.getElementById('productModal');
+    const content = document.getElementById('modalContent');
+    const overlay = document.getElementById('modalOverlay');
+
+    if (!modal || !content) {
+        showToast("Detalhes em breve...", "info");
+        return;
+    }
+
+    content.innerHTML = `
+        <div class="modal__grid">
+            <div class="modal__visual">
+                <i data-lucide="${p.icon}" style="width:120px; height:120px; color:var(--clr-gold);"></i>
+            </div>
+            <div class="modal__info">
+                <span class="modal__cat">${p.category}</span>
+                <h2 class="modal__title">${p.name}</h2>
+                <p class="modal__price">${formatKz(p.price)}</p>
+                <p class="modal__desc">${p.desc || 'Um produto premium seleccionado com rigor para garantir a melhor experiência e autenticidade angolana.'}</p>
+                <div class="modal__actions">
+                    <button class="btn btn--primary" onclick="addToCart(${p.id}); closeModal();">
+                        <i data-lucide="shopping-bag"></i> Adicionar à mala
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+
+    modal.classList.add('active');
+    if (overlay) overlay.classList.add('active');
+    document.body.style.overflow = 'hidden';
+    if (window.lucide) lucide.createIcons();
+}
+
+function closeModal() {
+    const modal = document.getElementById('productModal');
+    const overlay = document.getElementById('modalOverlay');
+    if (modal) modal.classList.remove('active');
+    if (overlay) overlay.classList.remove('active');
+    document.body.style.overflow = '';
+}
+
+/**
+ * Inicialização
+ */
 document.addEventListener('DOMContentLoaded', () => {
     // Sidebar logic
     const cartToggle = document.getElementById('cartToggle');
@@ -145,532 +259,268 @@ document.addEventListener('DOMContentLoaded', () => {
         overlay.classList.remove('active');
     };
 
-    lucide.createIcons();
-});
-=======
-   KIXIKILA MARKET — app.js
-   Lógica principal: carrinho, filtros, modal, pesquisa, etc.
-═══════════════════════════════════════════════════════════ */
+    // Search logic
+    const searchInput = document.getElementById('searchInput');
+    if (searchInput) {
+        searchInput.addEventListener('input', (e) => {
+            searchTerm = e.target.value.trim();
+            applyFilters();
+        });
+    }
 
-/* ─────────────── ESTADO GLOBAL ─────────────── */
-let cart      = [];        // itens no carrinho
-let wishlist  = [];        // produtos em lista de desejos
-let activeCategory = 'all';
-let activeBadge    = 'all';
-let activeSort     = 'default';
-let searchTerm     = '';
+    // Modal Close logic
+    const modalClose = document.getElementById('modalClose');
+    const modalOverlay = document.getElementById('modalOverlay');
+    if (modalClose) modalClose.onclick = closeModal;
+    if (modalOverlay) modalOverlay.onclick = closeModal;
 
-/* ─────────────── UTILITÁRIOS ─────────────── */
-
-/**
- * Formata número em Kwanza angolano
- * Ex: 4500 → "4.500 Kz"
- */
-function formatKz(value) {
-  return value.toLocaleString('pt-AO') + ' Kz';
-}
-
-/**
- * Mostra uma mensagem toast temporária
- */
-let toastTimer = null;
-function showToast(message) {
-  const el = document.getElementById('toast');
-  el.textContent = message;
-  el.classList.add('show');
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => el.classList.remove('show'), 3000);
-}
-
-/**
- * Anima o contador do carrinho
- */
-function bumpCartCount() {
-  const el = document.getElementById('cartCount');
-  el.classList.remove('bump');
-  void el.offsetWidth; // reflow para reiniciar animação
-  el.classList.add('bump');
-  setTimeout(() => el.classList.remove('bump'), 350);
-}
-
-/**
- * Scroll suave até secção
- */
-function scrollToSection(id) {
-  const el = document.getElementById(id);
-  if (el) el.scrollIntoView({ behavior: 'smooth' });
-}
-
-/**
- * Copiar código de desconto
- */
-function copyCode() {
-  navigator.clipboard.writeText('ANGOLA15').then(() => {
-    showToast('✅ Código "ANGOLA15" copiado!');
-  }).catch(() => {
-    showToast('📋 Código: ANGOLA15 (15% de desconto)');
-  });
-}
-
-/* ─────────────── RENDER CATEGORIAS ─────────────── */
-function renderCategories() {
-  const grid = document.getElementById('catsGrid');
-  grid.innerHTML = CATEGORIES.map(cat => `
-    <div
-      class="cat-card fade-in ${activeCategory === cat.id ? 'active' : ''}"
-      onclick="selectCategory('${cat.id}')"
-      role="button"
-      aria-pressed="${activeCategory === cat.id}"
-      tabindex="0"
-    >
-      <span class="cat-card__icon">${cat.icon}</span>
-      <div class="cat-card__name">${cat.name}</div>
-      <div class="cat-card__count">${cat.count} produtos</div>
-    </div>
-  `).join('');
-
-  // Activar fade-in
-  requestAnimationFrame(() => {
-    document.querySelectorAll('.cat-card.fade-in').forEach((el, i) => {
-      setTimeout(() => el.classList.add('visible'), i * 60);
-    });
-  });
-}
-
-function selectCategory(id) {
-  activeCategory = id;
-  activeBadge    = 'all';
-  searchTerm     = '';
-  document.getElementById('searchInput').value = '';
-  document.getElementById('sortSelect').value  = 'default';
-  activeSort = 'default';
-
-  renderCategories();
-  updateFilterBar();
-  renderProducts();
-  scrollToSection('produtos');
-}
-
-/* ─────────────── FILTER BAR ─────────────── */
-const FILTERS = [
-  { id: 'all',   label: '🏪 Todos'       },
-  { id: 'promo', label: '🏷️ Promoções'   },
-  { id: 'new',   label: '🆕 Novidades'   },
-  { id: 'dest',  label: '⭐ Destaques'   },
-];
-
-function updateFilterBar() {
-  const bar = document.getElementById('filterBar');
-  bar.innerHTML = FILTERS.map(f => `
-    <button
-      class="filter-btn ${activeBadge === f.id ? 'active' : ''}"
-      onclick="setFilter('${f.id}')"
-      aria-pressed="${activeBadge === f.id}"
-    >${f.label}</button>
-  `).join('');
-}
-
-function setFilter(id) {
-  activeBadge    = id;
-  activeCategory = 'all';
-  renderCategories();
-  updateFilterBar();
-  renderProducts();
-}
-
-/* ─────────────── FILTRAR + ORDENAR PRODUTOS ─────────────── */
-function getFilteredProducts() {
-  let list = [...PRODUCTS];
-
-  // Pesquisa por texto
-  if (searchTerm) {
-    const q = searchTerm.toLowerCase();
-    list = list.filter(p =>
-      p.name.toLowerCase().includes(q) ||
-      p.desc.toLowerCase().includes(q) ||
-      p.origin.toLowerCase().includes(q)
-    );
-    return list;
-  }
-
-  // Filtro por categoria
-  if (activeCategory !== 'all') {
-    list = list.filter(p => p.category === activeCategory);
-  }
-
-  // Filtro por badge
-  if (activeBadge === 'promo') list = list.filter(p => p.badge === 'promo');
-  if (activeBadge === 'new')   list = list.filter(p => p.badge === 'new');
-  if (activeBadge === 'dest')  list = list.filter(p => p.rating >= 4.8);
-
-  // Ordenação
-  if (activeSort === 'price-asc')  list.sort((a, b) => a.price - b.price);
-  if (activeSort === 'price-desc') list.sort((a, b) => b.price - a.price);
-  if (activeSort === 'name')       list.sort((a, b) => a.name.localeCompare(b.name));
-
-  return list;
-}
-
-/* ─────────────── RENDER PRODUTOS ─────────────── */
-function renderProducts() {
-  const list   = getFilteredProducts();
-  const grid   = document.getElementById('productsGrid');
-  const empty  = document.getElementById('emptyState');
-  const count  = document.getElementById('productsCount');
-
-  // Actualizar contagem
-  count.textContent = `${list.length} produto${list.length !== 1 ? 's' : ''} encontrado${list.length !== 1 ? 's' : ''}`;
-
-  // Estado vazio
-  if (list.length === 0) {
-    grid.innerHTML  = '';
-    empty.style.display = 'block';
-    return;
-  }
-  empty.style.display = 'none';
-
-  grid.innerHTML = list.map(p => {
-    const wished = wishlist.includes(p.id);
-    return `
-      <article class="product-card fade-in" data-id="${p.id}">
-        <!-- Badge -->
-        ${p.badge ? `<span class="product-badge product-badge--${p.badge}">${p.badge === 'promo' ? 'Promoção' : 'Novo'}</span>` : ''}
-
-        <!-- Wishlist -->
-        <button
-          class="product-wish ${wished ? 'liked' : ''}"
-          onclick="toggleWish(event, ${p.id})"
-          aria-label="${wished ? 'Remover da lista de desejos' : 'Adicionar à lista de desejos'}"
-        >${wished ? '❤️' : '🤍'}</button>
-
-        <!-- Imagem -->
-        <div class="product-img" onclick="openModal(${p.id})">${p.icon}</div>
-
-        <!-- Info -->
-        <div class="product-info" onclick="openModal(${p.id})">
-          <p class="product-cat">${getCatName(p.category)} · ${p.origin}</p>
-          <h3 class="product-name">${p.name}</h3>
-          <p class="product-desc">${p.desc}</p>
-
-          <div class="product-footer">
-            <div class="product-price">
-              ${p.oldPrice ? `<span class="product-price__old">${formatKz(p.oldPrice)}</span>` : ''}
-              <span class="product-price__current">${formatKz(p.price)}</span>
-            </div>
-            <button
-              class="add-to-cart"
-              onclick="addToCart(event, ${p.id})"
-              aria-label="Adicionar ${p.name} ao carrinho"
-              title="Adicionar ao carrinho"
-            >+</button>
-          </div>
-        </div>
-      </article>
-    `;
-  }).join('');
-
-  // Fade-in escalonado
-  requestAnimationFrame(() => {
-    document.querySelectorAll('.product-card.fade-in').forEach((el, i) => {
-      setTimeout(() => el.classList.add('visible'), i * 60);
-    });
-  });
-}
-
-function getCatName(catId) {
-  return CATEGORIES.find(c => c.id === catId)?.name || catId;
-}
-
-function resetFilters() {
-  activeCategory = 'all';
-  activeBadge    = 'all';
-  activeSort     = 'default';
-  searchTerm     = '';
-  document.getElementById('searchInput').value = '';
-  document.getElementById('sortSelect').value  = 'default';
-  renderCategories();
-  updateFilterBar();
-  renderProducts();
-}
-
-/* ─────────────── CARRINHO ─────────────── */
-
-/**
- * Adicionar produto ao carrinho
- */
-function addToCart(event, id) {
-  if (event) event.stopPropagation();
-
-  const product  = PRODUCTS.find(p => p.id === id);
-  const existing = cart.find(item => item.id === id);
-
-  if (existing) {
-    existing.qty += 1;
-  } else {
-    cart.push({ ...product, qty: 1 });
-  }
-
-  updateCartCount();
-  bumpCartCount();
-  renderCartItems();
-  showToast(`✅ "${product.name}" adicionado ao carrinho!`);
-}
-
-/**
- * Remover produto do carrinho
- */
-function removeFromCart(id) {
-  const product = cart.find(item => item.id === id);
-  cart = cart.filter(item => item.id !== id);
-  updateCartCount();
-  renderCartItems();
-  if (product) showToast(`🗑️ "${product.name}" removido do carrinho.`);
-}
-
-/**
- * Alterar quantidade
- */
-function changeQty(id, delta) {
-  const item = cart.find(item => item.id === id);
-  if (!item) return;
-  item.qty += delta;
-  if (item.qty <= 0) {
-    removeFromCart(id);
-  } else {
-    updateCartCount();
-    renderCartItems();
-  }
-}
-
-/**
- * Esvaziar carrinho
- */
-function clearCart() {
-  if (cart.length === 0) return;
-  cart = [];
-  updateCartCount();
-  renderCartItems();
-  showToast('🗑️ Carrinho esvaziado.');
-}
-
-/**
- * Actualizar contadores
- */
-function updateCartCount() {
-  const totalQty = cart.reduce((sum, item) => sum + item.qty, 0);
-  document.getElementById('cartCount').textContent = totalQty;
-}
-
-/**
- * Render itens no carrinho sidebar
- */
-function renderCartItems() {
-  const body = document.getElementById('cartBody');
-  const foot = document.getElementById('cartFoot');
-
-  if (cart.length === 0) {
-    body.innerHTML = `
-      <div class="cart-empty">
-        <div class="cart-empty__icon">🛒</div>
-        <h4>Carrinho vazio</h4>
-        <p>Adiciona produtos para começar a compra!</p>
-      </div>
-    `;
-    foot.style.display = 'none';
-    return;
-  }
-
-  body.innerHTML = cart.map(item => `
-    <div class="cart-item">
-      <div class="cart-item__img">${item.icon}</div>
-      <div class="cart-item__info">
-        <div class="cart-item__name">${item.name}</div>
-        <div class="cart-item__price">${formatKz(item.price * item.qty)}</div>
-        <div class="cart-item__qty">
-          <button class="qty-btn" onclick="changeQty(${item.id}, -1)" aria-label="Diminuir">−</button>
-          <span class="qty-num">${item.qty}</span>
-          <button class="qty-btn" onclick="changeQty(${item.id}, +1)" aria-label="Aumentar">+</button>
-        </div>
-      </div>
-      <button class="cart-item__remove" onclick="removeFromCart(${item.id})" aria-label="Remover">🗑️</button>
-    </div>
-  `).join('');
-
-  const subtotal = cart.reduce((sum, item) => sum + item.price * item.qty, 0);
-  document.getElementById('cartSubtotal').textContent = formatKz(subtotal);
-  document.getElementById('cartTotal').textContent    = formatKz(subtotal);
-  foot.style.display = 'flex';
-}
-
-/* ─────────────── OPEN / CLOSE CART ─────────────── */
-function openCart() {
-  document.getElementById('cartSidebar').classList.add('open');
-  document.getElementById('overlay').classList.add('open');
-  renderCartItems();
-}
-
-function closeCart() {
-  document.getElementById('cartSidebar').classList.remove('open');
-  document.getElementById('overlay').classList.remove('open');
-}
-
-/* ─────────────── CHECKOUT ─────────────── */
-function checkout() {
-  if (cart.length === 0) {
-    showToast('⚠️ O teu carrinho está vazio!');
-    return;
-  }
-  const total = cart.reduce((sum, item) => sum + item.price * item.qty, 0);
-  cart = [];
-  updateCartCount();
-  closeCart();
-  renderCartItems();
-  showToast(`🎉 Compra de ${formatKz(total)} realizada com sucesso! Obrigado!`);
-}
-
-/* ─────────────── WISHLIST ─────────────── */
-function toggleWish(event, id) {
-  event.stopPropagation();
-  const product = PRODUCTS.find(p => p.id === id);
-  const idx = wishlist.indexOf(id);
-
-  if (idx === -1) {
-    wishlist.push(id);
-    showToast(`❤️ "${product.name}" adicionado à lista de desejos!`);
-  } else {
-    wishlist.splice(idx, 1);
-    showToast(`🤍 "${product.name}" removido da lista de desejos.`);
-  }
-
-  document.getElementById('wishCount').textContent = wishlist.length;
-  renderProducts(); // re-render para actualizar botão
-}
-
-/* ─────────────── MODAL DETALHE ─────────────── */
-function openModal(id) {
-  const p = PRODUCTS.find(x => x.id === id);
-  if (!p) return;
-
-  const wished = wishlist.includes(p.id);
-
-  document.getElementById('modalContent').innerHTML = `
-    <div class="modal__img-area">${p.icon}</div>
-    <div class="modal__details">
-      <p class="modal__cat">${getCatName(p.category)} · Origem: ${p.origin}</p>
-      <h2 class="modal__name">${p.name}</h2>
-      <p class="modal__desc">${p.desc}</p>
-
-      <div style="margin-bottom:.8rem; font-size:.85rem; color:#888;">
-        ⭐ ${p.rating} · ${p.reviews} avaliações
-      </div>
-
-      <div class="modal__price">
-        ${p.oldPrice ? `<span class="modal__old">${formatKz(p.oldPrice)}</span>` : ''}
-        ${formatKz(p.price)}
-      </div>
-
-      <div class="modal__actions">
-        <button class="btn btn--primary" onclick="addToCart(null, ${p.id}); closeModal();">
-          🛒 Adicionar ao Carrinho
-        </button>
-        <button class="btn btn--ghost" onclick="toggleWish(event, ${p.id}); closeModal();">
-          ${wished ? '❤️ Remover dos Desejos' : '🤍 Adicionar aos Desejos'}
-        </button>
-      </div>
-    </div>
-  `;
-
-  document.getElementById('productModal').classList.add('open');
-  document.getElementById('modalOverlay').classList.add('open');
-  document.body.style.overflow = 'hidden';
-}
-
-function closeModal() {
-  document.getElementById('productModal').classList.remove('open');
-  document.getElementById('modalOverlay').classList.remove('open');
-  document.body.style.overflow = '';
-}
-
-/* ─────────────── PESQUISA ─────────────── */
-document.getElementById('searchInput').addEventListener('input', function () {
-  searchTerm     = this.value.trim();
-  activeCategory = 'all';
-  activeBadge    = 'all';
-  renderCategories();
-  updateFilterBar();
-  renderProducts();
+    if (window.lucide) lucide.createIcons();
 });
 
-/* ─────────────── ORDENAÇÃO ─────────────── */
-document.getElementById('sortSelect').addEventListener('change', function () {
-  activeSort = this.value;
-  renderProducts();
-});
+/**
+ * AUTHENTICATION
+ */
+let authMode = 'login';
 
-/* ─────────────── BOTÃO CARRINHO (HEADER) ─────────────── */
-document.getElementById('cartToggle').addEventListener('click', openCart);
-document.getElementById('cartClose').addEventListener('click', closeCart);
+function openAuthModal(mode = 'login') {
+    authMode = mode;
+    const modal = document.getElementById('authModal');
+    const overlay = document.getElementById('modalOverlay');
 
-document.getElementById('overlay').addEventListener('click', closeCart);
+    document.getElementById('authTitle').textContent = mode === 'login' ? 'Login' : 'Criar Conta';
+    document.getElementById('authDesc').textContent = mode === 'login'
+        ? 'Bem-vindo de volta! Introduz os teus dados.'
+        : 'Junta-te à elite. Começa a tua jornada hoje.';
 
-/* ─────────────── MODAL ─────────────── */
-document.getElementById('modalClose').addEventListener('click', closeModal);
-document.getElementById('modalOverlay').addEventListener('click', closeModal);
+    document.getElementById('registerFields').style.display = mode === 'login' ? 'none' : 'flex';
+    document.getElementById('authForm').querySelector('button[type="submit"]').textContent = mode === 'login' ? 'Entrar' : 'Registar';
+    document.getElementById('authSwitch').innerHTML = mode === 'login'
+        ? 'Ainda não tens conta? <a href="#" onclick="toggleAuthMode(event)" style="color:var(--clr-gold);">Cria uma aqui</a>'
+        : 'Já tens conta? <a href="#" onclick="toggleAuthMode(event)" style="color:var(--clr-gold);">Faz login aqui</a>';
 
-// Fechar modal com Escape
-document.addEventListener('keydown', function (e) {
-  if (e.key === 'Escape') {
-    closeModal();
-    closeCart();
-  }
-});
+    modal.classList.add('active');
+    if (overlay) overlay.classList.add('active');
+    document.body.style.overflow = 'hidden';
+}
 
-/* ─────────────── HAMBURGER (MOBILE) ─────────────── */
-const hamburger = document.getElementById('hamburger');
-const nav       = document.getElementById('nav');
-
-hamburger.addEventListener('click', function () {
-  nav.classList.toggle('open');
-  const open = nav.classList.contains('open');
-  document.body.style.overflow = open ? 'hidden' : '';
-});
-
-// Fechar nav ao clicar num link
-nav.querySelectorAll('.nav__link').forEach(link => {
-  link.addEventListener('click', () => {
-    nav.classList.remove('open');
+function closeAuthModal() {
+    const modal = document.getElementById('authModal');
+    const overlay = document.getElementById('modalOverlay');
+    if (modal) modal.classList.remove('active');
+    if (overlay) overlay.classList.remove('active');
     document.body.style.overflow = '';
-  });
-});
-
-/* ─────────────── SCROLL: HEADER SHRINK ─────────────── */
-window.addEventListener('scroll', function () {
-  const header = document.getElementById('header');
-  if (window.scrollY > 40) {
-    header.style.boxShadow = '0 4px 30px rgba(0,0,0,.5)';
-  } else {
-    header.style.boxShadow = '0 2px 20px rgba(0,0,0,.4)';
-  }
-});
-
-/* ─────────────── KEYBOARD: cat-card ─────────────── */
-document.addEventListener('keydown', function (e) {
-  if (e.key === 'Enter' && e.target.classList.contains('cat-card')) {
-    e.target.click();
-  }
-});
-
-/* ─────────────── INICIALIZAÇÃO ─────────────── */
-function init() {
-  renderCategories();
-  updateFilterBar();
-  renderProducts();
 }
 
-// Iniciar quando o DOM estiver pronto
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', init);
-} else {
-  init();
+function toggleAuthMode(e) {
+    if (e) e.preventDefault();
+    openAuthModal(authMode === 'login' ? 'register' : 'login');
 }
->>>>>>> d05e442de1efc0587f47695a4eb605465a60ff5e
+
+function toggleAdminKey(role) {
+    const field = document.getElementById('adminKeyField');
+    if (field) {
+        field.style.display = role === 'admin' ? 'flex' : 'none';
+    }
+}
+
+async function submitAuth(e) {
+    if (e) e.preventDefault();
+
+    const email = document.getElementById('authEmail').value;
+    const pass = document.getElementById('authPass').value;
+    const name = document.getElementById('authName').value;
+    const phone = document.getElementById('authPhone').value;
+    const role = document.getElementById('authRole')?.value || 'client';
+    const adminKey = document.getElementById('authAdminKey')?.value || '';
+
+    const action = authMode === 'login' ? 'login' : 'register';
+    const body = { email, password: pass };
+
+    if (authMode === 'register') {
+        body.name = name;
+        body.phone = phone;
+        body.role = role;
+        if (role === 'admin') {
+            body.admin_key = adminKey;
+        }
+    }
+
+    try {
+        const res = await fetch(`api/auth.php?action=${action}`, {
+            method: 'POST',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body)
+        });
+
+        const data = await res.json();
+
+        if (data.success) {
+            showToast(data.message, 'check-circle');
+            setTimeout(() => location.reload(), 1000);
+        } else {
+            showToast(data.error || 'Erro na autenticação', 'alert-circle');
+        }
+    } catch (err) {
+        showToast('Erro de ligação ao servidor', 'wifi-off');
+    }
+}
+
+async function handleLogout() {
+    if (!confirm('Desejas terminar a sessão?')) return;
+
+    try {
+        const res = await fetch('api/auth.php?action=logout', {
+            method: 'POST',
+            credentials: 'include'
+        });
+        const data = await res.json();
+        if (data.success) {
+            showToast('Sessão terminada', 'log-out');
+            setTimeout(() => location.reload(), 1000);
+        }
+    } catch (err) {
+        location.reload();
+    }
+}
+
+/**
+ * ADMIN STOREFRONT ACTIONS
+ */
+function openAdminModal(type) {
+    const modal = document.getElementById('adminModal');
+    const body = document.getElementById('adminModalBody');
+    const overlay = document.getElementById('modalOverlay');
+
+    if (type === 'category') {
+        body.innerHTML = `
+            <h2 class="modal__title">Nova Categoria</h2>
+            <p class="modal__desc">Cria uma nova colecção para a loja.</p>
+            <form onsubmit="submitAdminCategory(event)" style="display:flex; flex-direction:column; gap:1.5rem;">
+                <div class="form-group" style="text-align:left;">
+                    <label style="color:var(--clr-gold); font-size:0.7rem; font-weight:800; text-transform:uppercase;">Nome da Categoria</label>
+                    <input type="text" id="admCatName" required class="btn btn--outline" style="width:100%; text-transform:none;">
+                </div>
+                <div class="form-group" style="text-align:left;">
+                    <label style="color:var(--clr-gold); font-size:0.7rem; font-weight:800; text-transform:uppercase;">Ícone (Emoji)</label>
+                    <input type="text" id="admCatIcon" placeholder="📦" class="btn btn--outline" style="width:100%; text-transform:none;">
+                </div>
+                <button type="submit" class="btn btn--primary" style="width:100%; margin-top:1rem;">Guardar Categoria</button>
+            </form>
+        `;
+    } else {
+        const catOptions = CATEGORIES.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+        body.innerHTML = `
+            <h2 class="modal__title">Novo Produto</h2>
+            <p class="modal__desc">Adiciona um item ao catálogo.</p>
+            <form onsubmit="submitAdminProduct(event)" style="display:flex; flex-direction:column; gap:1rem; text-align:left;">
+                <div class="form-group">
+                    <label style="color:var(--clr-gold); font-size:0.7rem; font-weight:800; text-transform:uppercase;">Nome</label>
+                    <input type="text" id="admProdName" required class="btn btn--outline" style="width:100%; text-transform:none;">
+                </div>
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem;">
+                    <div class="form-group">
+                        <label style="color:var(--clr-gold); font-size:0.7rem; font-weight:800; text-transform:uppercase;">Categoria</label>
+                        <select id="admProdCat" class="btn btn--outline" style="width:100%; text-transform:none; padding:0.8rem;">${catOptions}</select>
+                    </div>
+                    <div class="form-group">
+                        <label style="color:var(--clr-gold); font-size:0.7rem; font-weight:800; text-transform:uppercase;">Preço (Kz)</label>
+                        <input type="number" id="admProdPrice" required class="btn btn--outline" style="width:100%; text-transform:none;">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label style="color:var(--clr-gold); font-size:0.7rem; font-weight:800; text-transform:uppercase;">Ícone / Emoji</label>
+                    <input type="text" id="admProdIcon" placeholder="📦" class="btn btn--outline" style="width:100%; text-transform:none;">
+                </div>
+                <div class="form-group">
+                    <label style="color:var(--clr-gold); font-size:0.7rem; font-weight:800; text-transform:uppercase;">Descrição</label>
+                    <textarea id="admProdDesc" required class="btn btn--outline" style="width:100%; text-transform:none; min-height:80px; font-family:inherit; padding:0.8rem;"></textarea>
+                </div>
+                <button type="submit" class="btn btn--primary" style="width:100%; margin-top:1rem; padding:1rem;">Publicar Produto</button>
+            </form>
+        `;
+    }
+
+    modal.classList.add('active');
+    if (overlay) overlay.classList.add('active');
+    document.body.style.overflow = 'hidden';
+}
+
+function closeAdminModal() {
+    const modal = document.getElementById('adminModal');
+    const overlay = document.getElementById('modalOverlay');
+    if (modal) modal.classList.remove('active');
+    if (overlay) overlay.classList.remove('active');
+    document.body.style.overflow = '';
+}
+
+async function adminDeleteProduct(id, name) {
+    if (!confirm(`Tens a certeza que desejas eliminar definitivamente o produto "${name}"?`)) return;
+
+    try {
+        const res = await fetch(`api/admin.php?action=products&id=${id}`, {
+            method: 'DELETE',
+            credentials: 'include'
+        });
+        const data = await res.json();
+        if (data.success) {
+            showToast('Produto eliminado com sucesso', 'trash-2');
+            setTimeout(() => location.reload(), 1000);
+        } else {
+            showToast(data.error || 'Erro ao eliminar produto', 'alert-circle');
+        }
+    } catch (err) {
+        showToast('Erro de ligação', 'wifi-off');
+    }
+}
+
+async function submitAdminCategory(e) {
+    e.preventDefault();
+    const name = document.getElementById('admCatName').value;
+    const icon = document.getElementById('admCatIcon').value;
+
+    try {
+        const res = await fetch('api/admin.php?action=categories', {
+            method: 'POST',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name, icon })
+        });
+        const data = await res.json();
+        if (data.success) {
+            showToast('Categoria criada!', 'check');
+            setTimeout(() => location.reload(), 1000);
+        } else {
+            showToast(data.error, 'alert-circle');
+        }
+    } catch (err) { showToast('Erro de ligação', 'wifi-off'); }
+}
+
+async function submitAdminProduct(e) {
+    e.preventDefault();
+    const body = {
+        name: document.getElementById('admProdName').value,
+        category_id: document.getElementById('admProdCat').value,
+        price: document.getElementById('admProdPrice').value,
+        icon: document.getElementById('admProdIcon').value || '📦',
+        description: document.getElementById('admProdDesc').value,
+        origin: 'Angola',
+        stock: 10
+    };
+
+    try {
+        const res = await fetch('api/admin.php?action=products', {
+            method: 'POST',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body)
+        });
+        const data = await res.json();
+        if (data.success) {
+            showToast('Produto publicado!', 'check');
+            setTimeout(() => location.reload(), 1000);
+        } else {
+            showToast(data.error, 'alert-circle');
+        }
+    } catch (err) { showToast('Erro de ligação', 'wifi-off'); }
+}

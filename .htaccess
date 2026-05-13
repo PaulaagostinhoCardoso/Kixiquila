@@ -1,0 +1,13 @@
+Options -MultiViews
+RewriteEngine On
+
+# Ajusta a base para o caminho real no XAMPP
+RewriteBase /Projetos/Kixiquila-main/
+
+# Não reescrever ficheiros ou pastas que existam realmente
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+
+# Se as rotas forem chamadas sem .php, podemos redirecionar (opcional)
+RewriteRule ^api/auth$ api/auth.php [QSA,L]
+RewriteRule ^api/admin$ api/admin.php [QSA,L]
