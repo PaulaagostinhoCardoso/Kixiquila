@@ -1,17 +1,3 @@
-<!DOCTYPE html>
-<html lang="pt-AO">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Kixikila Market — Premium Angolan Products</title>
-    
-    <!-- Lucide Icons -->
-    <script src="https://unpkg.com/lucide@latest"></script>
-    
-    <!-- Styles -->
-    <link rel="stylesheet" href="css/style.css">
-</head>
-<body>
 
 <header class="header" id="header">
     <div class="container header__inner">
@@ -22,9 +8,8 @@
         
         <nav class="nav">
             <a href="#hero" class="nav__link active">Início</a>
-            <a href="#categorias" class="nav__link">Coleção</a>
-            <a href="#produtos" class="nav__link">Produto</a>
-            <a href="#" class="nav__link">Sobre</a>
+            <a href="#categorias" class="nav__link">Coleções</a>
+            <a href="#produtos" class="nav__link">Catálogo</a>
         </nav>
         
         <div class="header__actions">
@@ -75,6 +60,6 @@
             <span>Total</span>
             <span id="cartTotal">0 Kz</span>
         </div>
-        <button class="btn btn--primary" style="width:100%">Finalizar Compra</button>
+        <button class="btn btn--primary" style="width:100%" onclick="checkout()">Finalizar Compra</button>
     </div>
 </aside>

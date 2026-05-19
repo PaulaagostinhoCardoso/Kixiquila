@@ -16,6 +16,18 @@ function formatKz(value) {
 }
 
 /**
+ * Renderiza ícone (Lucide ou Emoji)
+ */
+function renderIcon(icon, size = 18) {
+    if (!icon) return '<span>📦</span>';
+    const isLucide = /^[a-z0-9-]+$/.test(icon) && icon.length > 3;
+    if (isLucide) {
+        return `<i data-lucide="${icon}" style="width:${size}px; height:${size}px;"></i>`;
+    }
+    return `<span style="font-size:${size}px; display:inline-block; line-height:1;">${icon}</span>`;
+}
+
+/**
  * Toast Notifications
  */
 function showToast(message, icon = 'check-circle') {
@@ -129,17 +141,17 @@ function updateCartUI() {
     } else {
         body.innerHTML = cart.map(item => `
             <div class="cart-item">
-                <div class="cart-item__img"><i data-lucide="${item.icon}"></i></div>
+                <div class="cart-item__img">${renderIcon(item.icon, 24)}</div>
                 <div class="cart-item__info">
                     <h4 class="cart-item__name">${item.name}</h4>
                     <p class="cart-item__price">${formatKz(item.price)} x ${item.qty}</p>
-                    <div class="cart-item__qty-controls" style="display:flex; gap:10px; margin-top:5px;">
-                        <button onclick="changeQty(${item.id}, -1)" class="qty-btn"><i data-lucide="minus" size="12"></i></button>
+                    <div class="cart-item__qty-controls">
+                        <button onclick="changeQty(${item.id}, -1)" class="qty-btn">${renderIcon('minus', 12)}</button>
                         <span>${item.qty}</span>
-                        <button onclick="changeQty(${item.id}, 1)" class="qty-btn"><i data-lucide="plus" size="12"></i></button>
+                        <button onclick="changeQty(${item.id}, 1)" class="qty-btn">${renderIcon('plus', 12)}</button>
                     </div>
                 </div>
-                <button class="cart-item__remove" onclick="removeFromCart(${item.id})"><i data-lucide="trash-2" size="18"></i></button>
+                <button class="cart-item__remove" onclick="removeFromCart(${item.id})">${renderIcon('trash-2', 18)}</button>
             </div>
         `).join('');
 
@@ -176,12 +188,93 @@ function clearCart() {
     }
 }
 
+/**
+ * Checkout - Fluxo
+ */
 function checkout() {
     if (cart.length === 0) {
         showToast('A tua mala está vazia!', 'shopping-cart');
         return;
     }
-    showToast('Finalização de compra em breve...', 'info');
+    
+    // Reset para o passo 1
+    nextStep(1);
+    
+    const modal = document.getElementById('checkoutModal');
+    const overlay = document.getElementById('modalOverlay');
+    const cartSidebar = document.getElementById('cartSidebar');
+    const mainOverlay = document.getElementById('overlay');
+
+    // Fechar carrinho se estiver aberto
+    if (cartSidebar) cartSidebar.classList.remove('active');
+    if (mainOverlay) mainOverlay.classList.remove('active');
+
+    if (modal) modal.classList.add('active');
+    if (overlay) overlay.classList.add('active');
+    document.body.style.overflow = 'hidden';
+    if (window.lucide) lucide.createIcons();
+}
+
+function closeCheckout() {
+    const modal = document.getElementById('checkoutModal');
+    const overlay = document.getElementById('modalOverlay');
+    if (modal) modal.classList.remove('active');
+    if (overlay) overlay.classList.remove('active');
+    document.body.style.overflow = '';
+}
+
+function nextStep(step) {
+    // Esconder todos os passos
+    document.querySelectorAll('.checkout-step').forEach(el => el.classList.remove('active'));
+    document.querySelectorAll('.progress-step').forEach(el => el.classList.remove('active'));
+
+    // Mostrar passo actual
+    const stepEl = document.getElementById(`step${step}`);
+    if (stepEl) stepEl.classList.add('active');
+
+    // Actualizar barra de progresso
+    for (let i = 1; i <= step; i++) {
+        const prog = document.querySelector(`.progress-step[data-step="${i}"]`);
+        if (prog) prog.classList.add('active');
+    }
+
+    if (window.lucide) lucide.createIcons();
+}
+
+function prevStep(step) {
+    nextStep(step);
+}
+
+function selectPayment(el) {
+    document.querySelectorAll('.payment-card').forEach(card => card.classList.remove('active'));
+    el.classList.add('active');
+}
+
+async function finalizePurchase() {
+    const btn = document.querySelector('#step2 .main-action');
+    const originalText = btn.innerHTML;
+    
+    // Efeito de loading
+    btn.disabled = true;
+    btn.innerHTML = '<i data-lucide="loader-2" class="spin"></i> Processando...';
+    if (window.lucide) lucide.createIcons();
+
+    // Simular delay de rede
+    await new Promise(resolve => setTimeout(resolve, 2000));
+
+    // Gerar tempo de entrega aleatório (entre 2h e 48h)
+    const hours = Math.floor(Math.random() * 46) + 2;
+    const timeText = hours < 24 ? `${hours} Horas` : `1 Dia e ${hours - 24} Horas`;
+    const deliveryTimeEl = document.getElementById('deliveryTime');
+    if (deliveryTimeEl) deliveryTimeEl.textContent = timeText;
+
+    // Limpar carrinho
+    cart = [];
+    updateCartUI();
+
+    // Ir para sucesso
+    nextStep(3);
+    showToast('Compra finalizada com sucesso!', 'check-circle');
 }
 
 /**
@@ -204,7 +297,7 @@ function openModal(id) {
     content.innerHTML = `
         <div class="modal__grid">
             <div class="modal__visual">
-                <i data-lucide="${p.icon}" style="width:120px; height:120px; color:var(--clr-gold);"></i>
+                ${renderIcon(p.icon, 80)}
             </div>
             <div class="modal__info">
                 <span class="modal__cat">${p.category}</span>
